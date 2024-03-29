@@ -55,119 +55,9 @@ async function handleTabCreated(event) {
   //
   try {
     console.log('create', event);
-    const { active: isActive, ...tabData } = event;
+    // const { active: isActive, ...tabData } = event;
 
-    if (!isActive || !tabData?.url) return; // ignore if the tab is not active
-    console.log('handleTabCreated', tabData);
-    let { TABS_DATA: tabs } = await chrome.storage.local.get('TABS_DATA');
-    let { ACTIVE_TAB_DATA: activeTab } = await chrome.storage.local.get(
-      'ACTIVE_TAB_DATA'
-    );
-    console.log(
-      'create<<<--->>tabs',
-      tabs,
-      activeTab,
-      !Boolean(tabs.length),
-      !Boolean(activeTab)
-    );
-    stopIncrement();
-    if (!Boolean(tabs.length) || !Boolean(activeTab)) {
-      timeCounter = 0;
-      tabs = [
-        {
-          url: tabData?.url,
-          totalRunTime: timeCounter,
-          lastAccessed: tabData?.lastAccessed,
-          tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
-        },
-      ];
-      activeTab = {
-        id: tabData.id,
-        windowId: tabData?.windowId,
-        lastAccessed: tabData?.lastAccessed,
-        totalRunTime: timeCounter,
-        url: tabData?.url,
-      };
-      console.log('create set1', tabs);
-
-      await chrome.storage.local.set({ TABS_DATA: tabs });
-      await chrome.storage.local.set({
-        ACTIVE_TAB_DATA: activeTab,
-      });
-      incrementCounter();
-      return;
-    }
-    console.log('tab......s', tabs);
-    let previousTab = activeTab;
-
-    const allTabs = tabs;
-
-    let newRunTime = 0;
-    let newTabs = [];
-    let urlExists = allTabs?.some((tabEl) => tabEl.url === tabData.url);
-
-    if (previousTab.url !== tabData.url) {
-      if (!urlExists) {
-        console.log('no url exists');
-
-        newRunTime = 0;
-        newTabs = [
-          ...allTabs,
-          {
-            url: tabData?.url,
-            totalRunTime: timeCounter,
-            lastAccessed: tabData?.lastAccessed,
-            tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
-          },
-        ];
-      } else {
-        // loop through the tabs
-        newTabs = allTabs.map((tabEl) => {
-          if (tabEl.url === tabData.url) {
-            // get the tab runtime from tabEl
-            console.log('tabEl......s', tabEl);
-
-            newRunTime = tabEl.totalRunTime;
-            let tabExists = tabEl?.tabs.some((el) => el.tabId === tabData.id);
-            // update the tab list if the tab doesn't exists in the list
-            if (!tabExists) {
-              return {
-                ...tabEl,
-                tabs: [
-                  ...tabEl.tabs,
-                  {
-                    tabId: tabData.id,
-                    windowId: tabData?.windowId,
-                  },
-                ],
-              };
-            }
-          } else if (tabEl.url === previousTab.url) {
-            // update the runtime for the previous tab
-            tabEl.totalRunTime = timeCounter;
-          }
-          return tabEl;
-        });
-      }
-    } else {
-      incrementCounter();
-      return;
-    }
-    timeCounter = newRunTime;
-    activeTab = {
-      id: tabData.id,
-      windowId: tabData?.windowId,
-      lastAccessed: tabData?.lastAccessed,
-      totalRunTime: timeCounter,
-      url: tabData?.url,
-    };
-    console.log('create set2', newTabs);
-
-    await chrome.storage.local.set({ TABS_DATA: newTabs });
-    await chrome.storage.local.set({
-      ACTIVE_TAB_DATA: activeTab,
-    });
-    incrementCounter();
+    handleUpdateTracker(event);
   } catch (error) {
     console.error('error in handleTabCreated', error);
   }
@@ -179,6 +69,7 @@ async function handleTabUpdated(...event) {
     console.log('update', event);
     const [tabId, changeInfo, tab] = event;
     console.log('handleTabUpdated', tabId, changeInfo, tab, tab.status);
+    handleUpdateTracker(tab);
   } catch (error) {
     console.error('error in handleTabUpdated', error);
   }
@@ -189,108 +80,39 @@ async function handleTabActivated(event) {
   try {
     const { tabId } = event;
     console.log('active tabId', tabId);
-
     let tabData = await chrome.tabs.get(tabId);
+    handleUpdateTracker(tabData);
     console.log('active tabData', tabData);
+  } catch (error) {
+    console.error('error in handleTabActivated', error);
+  }
+}
 
-    if (!tabData.active | !tabData.url) return; // ignore if the tab is not active
-    let { TABS_DATA: tabs } = await chrome.storage.local.get('TABS_DATA');
-    let { ACTIVE_TAB_DATA: activeTab } = await chrome.storage.local.get(
-      'ACTIVE_TAB_DATA'
-    );
-    console.log(
-      'active---tabs',
-      tabs,
-      activeTab,
-      !Boolean(tabs.length),
-      !Boolean(activeTab)
-    );
-    stopIncrement();
-    if (!Boolean(tabs.length) || !Boolean(activeTab)) {
-      console.log('creating new??');
-      timeCounter = 0;
-      tabs = [
-        {
-          url: tabData?.url,
-          totalRunTime: timeCounter,
-          lastAccessed: tabData?.lastAccessed,
-          tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
-        },
-      ];
-      activeTab = {
-        id: tabData.id,
-        windowId: tabData?.windowId,
-        lastAccessed: tabData?.lastAccessed,
-        totalRunTime: timeCounter,
+async function handleUpdateTracker(tabData) {
+  if (!tabData.active | !tabData.url) return; // ignore if the tab is not active
+  let { TABS_DATA: tabs } = await chrome.storage.local.get('TABS_DATA');
+  let { ACTIVE_TAB_DATA: activeTab } = await chrome.storage.local.get(
+    'ACTIVE_TAB_DATA'
+  );
+  console.log(
+    'active---tabs',
+    tabs,
+    activeTab,
+    !Boolean(tabs.length),
+    !Boolean(activeTab)
+  );
+  stopIncrement();
+  if (!Boolean(tabs.length) || !Boolean(activeTab)) {
+    console.log('creating new??');
+    timeCounter = 0;
+    tabs = [
+      {
         url: tabData?.url,
-      };
-      console.log('active set1', tabs);
-      await chrome.storage.local.set({ TABS_DATA: tabs });
-      await chrome.storage.local.set({
-        ACTIVE_TAB_DATA: activeTab,
-      });
-      incrementCounter();
-
-      return;
-    }
-    console.log('active tab......s', tabs);
-    let previousTab = activeTab;
-
-    const allTabs = tabs;
-
-    let newRunTime = 0;
-    let newTabs = [];
-    let urlExists = allTabs?.some((tabEl) => tabEl.url === tabData.url);
-    if (previousTab.url !== tabData.url) {
-      if (!urlExists) {
-        console.log('no url exists');
-
-        newRunTime = 0;
-        newTabs = [
-          ...allTabs,
-          {
-            url: tabData?.url,
-            totalRunTime: timeCounter,
-            lastAccessed: tabData?.lastAccessed,
-            tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
-          },
-        ];
-      } else {
-        // loop through the tabs
-        newTabs = allTabs.map((tabEl) => {
-          if (tabEl.url === tabData.url) {
-            // get the tab runtime from tabEl
-            console.log('tabEl......s', tabEl);
-
-            newRunTime = tabEl.totalRunTime;
-            let tabExists = tabEl?.tabs.some((el) => el.tabId === tabData.id);
-            // update the tab list if the tab doesn't exists in the list
-            if (!tabExists) {
-              return {
-                ...tabEl,
-                tabs: [
-                  ...tabEl.tabs,
-                  {
-                    tabId: tabData.id,
-                    windowId: tabData?.windowId,
-                  },
-                ],
-              };
-            }
-          } else if (tabEl.url === previousTab.url) {
-            // update the runtime for the previous tab
-            tabEl.totalRunTime = timeCounter;
-          }
-          return tabEl;
-        });
-      }
-    } else {
-      incrementCounter();
-      return;
-    }
-    console.log('newRunTime......', newRunTime);
-
-    timeCounter = newRunTime;
+        totalRunTime: timeCounter,
+        lastAccessed: tabData?.lastAccessed,
+        tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
+      },
+    ];
     activeTab = {
       id: tabData.id,
       windowId: tabData?.windowId,
@@ -298,16 +120,87 @@ async function handleTabActivated(event) {
       totalRunTime: timeCounter,
       url: tabData?.url,
     };
-    console.log('active set2', newTabs);
-
-    await chrome.storage.local.set({ TABS_DATA: newTabs });
+    console.log('active set1', tabs);
+    await chrome.storage.local.set({ TABS_DATA: tabs });
     await chrome.storage.local.set({
       ACTIVE_TAB_DATA: activeTab,
     });
     incrementCounter();
-  } catch (error) {
-    console.error('error in handleTabActivated', error);
+
+    return;
   }
+  console.log('active tab......s', tabs);
+  let previousTab = activeTab;
+
+  const allTabs = tabs;
+
+  let newRunTime = 0;
+  let newTabs = [];
+  let urlExists = allTabs?.some((tabEl) => tabEl.url === tabData.url);
+  if (previousTab.url !== tabData.url) {
+    if (!urlExists) {
+      console.log('no url exists');
+
+      newRunTime = 0;
+      newTabs = [
+        ...allTabs,
+        {
+          url: tabData?.url,
+          totalRunTime: timeCounter,
+          lastAccessed: tabData?.lastAccessed,
+          tabs: [{ tabId: tabData?.id, windowId: tabData?.windowId }],
+        },
+      ];
+    } else {
+      // loop through the tabs
+      newTabs = allTabs.map((tabEl) => {
+        if (tabEl.url === tabData.url) {
+          // get the tab runtime from tabEl
+          console.log('tabEl......s', tabEl);
+
+          newRunTime = tabEl.totalRunTime;
+          let tabExists = tabEl?.tabs.some((el) => el.tabId === tabData.id);
+          // update the tab list if the tab doesn't exists in the list
+          if (!tabExists) {
+            return {
+              ...tabEl,
+              tabs: [
+                ...tabEl.tabs,
+                {
+                  tabId: tabData.id,
+                  windowId: tabData?.windowId,
+                },
+              ],
+            };
+          }
+        } else if (tabEl.url === previousTab.url) {
+          // update the runtime for the previous tab
+          tabEl.totalRunTime = timeCounter;
+        }
+        return tabEl;
+      });
+    }
+  } else {
+    incrementCounter();
+    return;
+  }
+  console.log('newRunTime......', newRunTime);
+
+  timeCounter = newRunTime;
+  activeTab = {
+    id: tabData.id,
+    windowId: tabData?.windowId,
+    lastAccessed: tabData?.lastAccessed,
+    totalRunTime: timeCounter,
+    url: tabData?.url,
+  };
+  console.log('active set2', newTabs);
+
+  await chrome.storage.local.set({ TABS_DATA: newTabs });
+  await chrome.storage.local.set({
+    ACTIVE_TAB_DATA: activeTab,
+  });
+  incrementCounter();
 }
 
 chrome.tabs.onActivated.addListener(handleTabActivated);
