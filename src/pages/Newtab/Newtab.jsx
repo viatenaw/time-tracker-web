@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import logo from '../../assets/img/logo.svg';
 import './Newtab.css';
 import './Newtab.scss';
 
 const Newtab = () => {
+  const init = async () => {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    // `tab` will either be a `tabs.Tab` instance or `undefined`.
+    let [tab] = await chrome.tabs.query(queryOptions);
+    // console.log('tab....>', tab);
+    return tab;
+  }
+
+  useEffect(() => {
+    init()
+
+  }, [])
   return (
     <div className="App">
       <header className="App-header">
