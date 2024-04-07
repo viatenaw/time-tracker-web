@@ -21,12 +21,12 @@ function stopIncrement() {
   }
 }
 
-(async () => {
-  await chrome.storage.local.set({ TABS_DATA: [] });
-  await chrome.storage.local.set({
-    ACTIVE_TAB_DATA: undefined,
-  });
-})();
+// (async () => {
+//   await chrome.storage.sync.set({ TABS_DATA: [] });
+//   await chrome.storage.sync.set({
+//     ACTIVE_TAB_DATA: undefined,
+//   });
+// })();
 
 async function updateTabTime(tabId, text) {
   await chrome.action.setBadgeText({
@@ -71,8 +71,8 @@ async function handleUpdateTracker(currentTabData, eventType) {
     currentTabData.status !== 'complete'
   )
     return; // ignore if the tab is not active
-  let { TABS_DATA: tabs } = await chrome.storage.local.get('TABS_DATA');
-  let { ACTIVE_TAB_DATA: activeTab } = await chrome.storage.local.get(
+  let { TABS_DATA: tabs } = await chrome.storage.sync.get('TABS_DATA');
+  let { ACTIVE_TAB_DATA: activeTab } = await chrome.storage.sync.get(
     'ACTIVE_TAB_DATA'
   );
   console.log(`<<<${eventType} event>>>`, {
@@ -102,8 +102,8 @@ async function handleUpdateTracker(currentTabData, eventType) {
       url: currentTabData?.url,
     };
     console.log(`--${eventType}-- set1`, { tabs, activeTab });
-    await chrome.storage.local.set({ TABS_DATA: tabs });
-    await chrome.storage.local.set({
+    await chrome.storage.sync.set({ TABS_DATA: tabs });
+    await chrome.storage.sync.set({
       ACTIVE_TAB_DATA: activeTab,
     });
     incrementCounter();
@@ -187,8 +187,8 @@ async function handleUpdateTracker(currentTabData, eventType) {
   };
   console.log(`--${eventType}-- set2`, newTabs);
 
-  await chrome.storage.local.set({ TABS_DATA: newTabs });
-  await chrome.storage.local.set({
+  await chrome.storage.sync.set({ TABS_DATA: newTabs });
+  await chrome.storage.sync.set({
     ACTIVE_TAB_DATA: activeTab,
   });
   incrementCounter();
